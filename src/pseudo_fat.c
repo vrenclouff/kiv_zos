@@ -78,7 +78,14 @@ int main(int argc, char **argv)
     exit(3);
   }
          
-  p_file = fopen("bigfat.fat", "r");
+  p_file = fopen("../output.fat", "r");
+
+  if (!p_file)
+  {
+    printf("Error open file\n");
+    exit(2);
+  }
+
   fseek(p_file, SEEK_SET, 0);
   
   fread(p_boot_record, sizeof(struct boot_record), 1, p_file);
@@ -133,9 +140,8 @@ int main(int argc, char **argv)
     fread(p_root_directory, sizeof(struct root_directory), 1, p_file);
     add_root_directory(root_dir, p_root_directory);
   }
- 
+  
 
-  printf("%s\n%s\n%s\n", root_dir -> first -> dir -> file_name, root_dir -> first -> next -> dir -> file_name, root_dir -> last -> dir -> file_name);
 
   return 0;
 }
