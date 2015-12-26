@@ -9,8 +9,6 @@
 #define NOK "NOK"
 #define FAI "FAI"
 
-unsigned int THREAD_COUNT = 1;
-
 struct boot_record {
     char volume_descriptor[251];
     int fat_type;
@@ -39,6 +37,11 @@ struct root_dir{
   int size;
   struct root_dir_dyn *first;
   struct root_dir_dyn *last;
+};
+
+struct fat_table{
+  unsigned int size;
+  unsigned int *fat;
 };
 
 #endif
