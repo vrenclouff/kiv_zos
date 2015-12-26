@@ -142,5 +142,6 @@ int main(int argc, char **argv)
   else printf("Velikost souboru: FAIL\n");
 
 
+  free_fat(boot_record, root_dir, fat_table, cluster);
   return 0;
 }

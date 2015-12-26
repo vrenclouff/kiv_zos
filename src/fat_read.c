@@ -38,12 +38,41 @@ void add_cluster(struct cluster *cluster, char *p_cluster, unsigned int position
   }
   cluster_dyn -> cluster = p_cluster;
   cluster_dyn -> position = position;
+  cluster_dyn -> next = NULL;
 
   if (cluster -> size != 0) cluster -> last -> next = cluster_dyn;
   else cluster -> first = cluster_dyn;
 
   cluster -> size++;
   cluster -> last = cluster_dyn; 
+}
+
+void free_fat(struct boot_record *boot_record, struct root_dir *root_dir, struct fat_table *fat_table, struct cluster *cluster)
+{
+  struct root_dir_dyn *root_dir_item;
+  struct cluster_dyn *cluster_item;
+  
+  free(boot_record);
+  free(fat_table -> fat);
+  free(fat_table);
+
+  while(cluster -> first)
+  {
+    cluster_item = cluster -> first -> next;
+    free(cluster -> first -> cluster);
+    free(cluster -> first);
+    cluster -> first = cluster_item;
+  }
+  free(cluster);
+
+  while(root_dir -> first)
+  {
+    root_dir_item = root_dir -> first -> next;
+    free(root_dir -> first -> dir);
+    free(root_dir -> first);
+    root_dir -> first = root_dir_item;
+  }
+  free(root_dir);
 }
 
 void read_fat(char *file_name, struct boot_record *boot_record, struct root_dir *root_dir, struct fat_table *fat_table, struct cluster *cluster)
@@ -106,6 +135,7 @@ void read_fat(char *file_name, struct boot_record *boot_record, struct root_dir 
       }
     }
   }
+  free(fat_item);
 
   printf("FAT table check: OK.\n");
   fat_table -> fat = fat;
@@ -128,6 +158,7 @@ void read_fat(char *file_name, struct boot_record *boot_record, struct root_dir 
   if (cluster -> size == (boot_record -> reserved_cluster_count - boot_record -> root_directory_max_entries_count)) printf("FAT check cluster: OK\n");
   else printf("FAT check cluster: FAIL\n");
 
+  fclose(p_file);
 }
 
 
