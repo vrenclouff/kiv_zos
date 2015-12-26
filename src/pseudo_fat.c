@@ -11,6 +11,7 @@ unsigned int thread_count = 1;
 struct boot_record *boot_record;
 struct root_dir *root_dir;
 struct fat_table *fat_table;
+struct cluster *cluster;
 
 
 int valid_param(int argc, char **argv)
@@ -35,13 +36,26 @@ int valid_param(int argc, char **argv)
   return 0;
 }
 
+struct cluster *init_cluster()
+{
+  struct cluster *cluster;
+  cluster = (struct cluster *) malloc (sizeof(struct cluster));
+  if (!cluster)
+  {
+    printf("Error malloc cluster\n");
+    exit(3);
+  }
+  cluster -> size = 0;
+  return cluster;
+}
+
 struct root_dir *init_root_dir()
 {
   struct root_dir *root_dir;
   root_dir = (struct root_dir *) malloc (sizeof(struct root_dir));
   if (!root_dir)
   {
-    printf("Error malloc root_dir");
+    printf("Error malloc root_dir\n");
     exit(3);
   }
   root_dir -> size = 0; 
@@ -76,11 +90,12 @@ struct fat_table *init_fat_table()
 int check_cluster_length()
 {
   struct root_dir_dyn *item;
-  int i, count, flag;
+  int count, bad_files, flag;
   unsigned int length, block;
 
   item = root_dir -> first;
   flag = 1;
+  bad_files = 0;
   while(item)
   {
     length = round(item -> dir -> file_size / boot_record -> cluster_size + 0.5f);
@@ -88,14 +103,23 @@ int check_cluster_length()
     block = fat_table -> fat[item -> dir -> first_cluster];
     while (1)
     {
-      if (block == FAT_UNUSED || block == FAT_BAD_CLUSTER) continue;
+
+      if (block == FAT_UNUSED || block == FAT_BAD_CLUSTER)
+      {
+        bad_files++;        
+        break;
+      }
+      
       count++;
       if (block == FAT_FILE_END) break;
+
       block = fat_table -> fat[block];
     }
     if (count != length) flag = 0;
     item = item -> next;
   }
+  printf("File with bad cluster: %d\n", bad_files);
+
   return flag;
 }
 
@@ -110,8 +134,9 @@ int main(int argc, char **argv)
   root_dir = init_root_dir();
   boot_record = init_boot_record(); 
   fat_table = init_fat_table();
-  
-  read_fat(file_name, boot_record, root_dir, fat_table);
+  cluster = init_cluster();
+
+  read_fat(file_name, boot_record, root_dir, fat_table, cluster);
 
   if (check_cluster_length()) printf("Velikost souboru: OK\n");
   else printf("Velikost souboru: FAIL\n");

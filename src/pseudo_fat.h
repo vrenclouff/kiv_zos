@@ -44,4 +44,16 @@ struct fat_table{
   unsigned int *fat;
 };
 
+struct cluster_dyn{
+  unsigned int position;
+  char *cluster;
+  struct cluster_dyn *next;
+};
+
+struct cluster{
+  unsigned int size;
+  struct cluster_dyn *first;
+  struct cluster_dyn *last;
+};
+
 #endif
