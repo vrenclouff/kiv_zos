@@ -189,6 +189,10 @@ void read_fat(char *file_name, struct boot_record *boot_record, struct root_dir 
   if (cluster -> size == (boot_record -> reserved_cluster_count - boot_record -> root_directory_max_entries_count)) printf("FAT check cluster: OK\n");
   else printf("FAT check cluster: FAIL\n");
 
+  /* nastaveni aktualniho ukazatele na zacatek */
+  root_dir -> actual = root_dir -> first;
+  cluster -> actual = cluster -> first;
+  
   /* uzavreni souboru */
   fclose(p_file);
 }

@@ -87,40 +87,60 @@ struct fat_table *init_fat_table()
   return fat_table;
 }
 
-int check_cluster_length()
+struct root_dir_dyn *get_file()
 {
   struct root_dir_dyn *item;
-  int count, bad_files, flag;
-  unsigned int length, block;
+  item = root_dir -> actual;
+  if (item) root_dir -> actual = item -> next;
+  return item;  
+}
 
-  item = root_dir -> first;
-  flag = 1;
-  bad_files = 0;
-  while(item)
+int check_fat_flag(unsigned int *block, int *count, int *bad_files)
+{
+  switch(*block)
+  {
+    case FAT_UNUSED: *bad_files = *bad_files + 1; return 0;
+    case FAT_BAD_CLUSTER: *bad_files = *bad_files + 1; return 0;
+    case FAT_FILE_END: *count = *count + 1; return 0;
+  }
+  *count = *count + 1;
+  return 1;
+}
+
+void check_cluster_length(char *flag, int *bad_files)
+{
+  struct root_dir_dyn *item;
+  int *count;
+  unsigned int length, *block;
+
+  count = malloc(sizeof(int));
+  if (!count)
+  {
+    printf("Error malloc count\n");
+    exit(3);
+  }
+  block = malloc(sizeof(unsigned int));
+  if (!block)
+  {
+    printf("Error malloc block\n");
+    exit(3);
+  }
+
+  *flag = 1;
+  *bad_files = 0;
+  while(item = get_file())
   {
     length = round(item -> dir -> file_size / boot_record -> cluster_size + 0.5f);
-    count = 0;
-    block = fat_table -> fat[item -> dir -> first_cluster];
-    while (1)
+    *count = 0;
+    *block = fat_table -> fat[item -> dir -> first_cluster];
+    while (check_fat_flag(block, count, bad_files))
     {
-
-      if (block == FAT_UNUSED || block == FAT_BAD_CLUSTER)
-      {
-        bad_files++;        
-        break;
-      }
-      
-      count++;
-      if (block == FAT_FILE_END) break;
-
-      block = fat_table -> fat[block];
+      *block = fat_table -> fat[*block];
     }
-    if (count != length) flag = 0;
-    item = item -> next;
+    if (*count != length) *flag = 0;
   }
-  printf("File with bad cluster: %d\n", bad_files);
-
-  return flag;
+  free(count);
+  free(block);
 }
 
 int main(int argc, char **argv)
@@ -138,10 +158,17 @@ int main(int argc, char **argv)
 
   read_fat(file_name, boot_record, root_dir, fat_table, cluster);
 
-  if (check_cluster_length()) printf("Velikost souboru: OK\n");
+  char *flag = (char *) malloc(sizeof(char));
+  int *bad_files = (int *) malloc(sizeof(int));
+  check_cluster_length(flag, bad_files);
+
+  if (*flag) printf("Velikost souboru: OK\n");
   else printf("Velikost souboru: FAIL\n");
-
-
+  
+  printf("File with bad cluster: %d\n", *bad_files);
+  
   free_fat(boot_record, root_dir, fat_table, cluster);
+  free(flag);
+  free(bad_files);
   return 0;
 }

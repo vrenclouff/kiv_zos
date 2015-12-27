@@ -36,6 +36,7 @@ struct root_dir_dyn{
 struct root_dir{
   int size;
   struct root_dir_dyn *first;
+  struct root_dir_dyn *actual;
   struct root_dir_dyn *last;
 };
 
@@ -53,6 +54,7 @@ struct cluster_dyn{
 struct cluster{
   unsigned int size;
   struct cluster_dyn *first;
+  struct cluster_dyn *actual;
   struct cluster_dyn *last;
 };
 
