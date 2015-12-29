@@ -9,7 +9,8 @@
 #define NOK "NOK"
 #define FAI "FAI"
 
-struct boot_record {
+struct boot_record
+{
     char volume_descriptor[251];
     int fat_type;
     int fat_copies;
@@ -20,7 +21,8 @@ struct boot_record {
     char signature[4];
 };
 
-struct root_directory{
+struct root_directory
+{
     char file_name[13];    
     char file_mod[10];
     short file_type;
@@ -28,30 +30,35 @@ struct root_directory{
     unsigned int first_cluster;
 };
 
-struct root_dir_dyn{
+struct root_dir_dyn
+{
   struct root_directory *dir;
   struct root_dir_dyn *next;
 };
 
-struct root_dir{
+struct root_dir
+{
   int size;
   struct root_dir_dyn *first;
   struct root_dir_dyn *actual;
   struct root_dir_dyn *last;
 };
 
-struct fat_table{
+struct fat_table
+{
   unsigned int size;
   unsigned int *fat;
 };
 
-struct cluster_dyn{
+struct cluster_dyn
+{
   unsigned int position;
   char *cluster;
   struct cluster_dyn *next;
 };
 
-struct cluster{
+struct cluster
+{
   unsigned int size;
   struct cluster_dyn *first;
   struct cluster_dyn *actual;
