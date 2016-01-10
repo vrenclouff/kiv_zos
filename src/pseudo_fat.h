@@ -5,9 +5,17 @@
 #define FAT_FILE_END    65534
 #define FAT_BAD_CLUSTER 65533
 
+#define MARK_BAD_CLUSTER "FFFFFF"
+
 #define OK  "OK"
 #define NOK "NOK"
 #define FAI "FAI"
+
+typedef struct pthread_data
+{
+  char flag;
+  int count_files;
+}pthread_data;
 
 struct boot_record
 {
@@ -41,7 +49,6 @@ struct root_dir
   int size;
   struct root_dir_dyn *first;
   struct root_dir_dyn *actual;
-  struct root_dir_dyn *last;
 };
 
 struct fat_table
@@ -61,8 +68,6 @@ struct cluster
 {
   unsigned int size;
   struct cluster_dyn *first;
-  struct cluster_dyn *actual;
-  struct cluster_dyn *last;
 };
 
 #endif

@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
-#include "fat_read.h"
+#include "fat_rw.h"
 
 /***********************************************************
  * Pridani nove root_directory
@@ -21,14 +22,11 @@ void add_root_directory(struct root_dir *root, struct root_directory *item)
     exit(3);
   }
 
-  root_dir_tmp -> next = NULL;
   root_dir_tmp -> dir = item;
 
-  if (root -> size != 0) root -> last -> next = root_dir_tmp;
-  else root -> first = root_dir_tmp;
-
+  root_dir_tmp -> next = root -> first;
+  root -> first = root_dir_tmp;
   root -> size++;
-  root -> last = root_dir_tmp;
 
 }
 
@@ -49,13 +47,10 @@ void add_cluster(struct cluster *cluster, char *p_cluster, unsigned int position
   }
   cluster_dyn -> cluster = p_cluster;
   cluster_dyn -> position = position;
-  cluster_dyn -> next = NULL;
 
-  if (cluster -> size != 0) cluster -> last -> next = cluster_dyn;
-  else cluster -> first = cluster_dyn;
-
+  cluster_dyn -> next = cluster -> first;
+  cluster -> first = cluster_dyn;
   cluster -> size++;
-  cluster -> last = cluster_dyn; 
 }
 
 /***********************************************************
@@ -105,6 +100,8 @@ void read_fat(char *file_name, struct boot_record *boot_record, struct root_dir 
   FILE *p_file;
   int i,j;
   
+  if (!file_name || !boot_record || !root_dir || !fat_table || !cluster) return;
+  
   /* otevre soubor pro cteni */
   p_file = fopen(file_name, "r");
 
@@ -142,8 +139,10 @@ void read_fat(char *file_name, struct boot_record *boot_record, struct root_dir 
   /* cteni fat tabulky */
   for (i = 0; i < boot_record -> cluster_count; i++)
   {
-    fread(&(fat_table -> fat)[i], sizeof(unsigned int), 1, p_file);   
+    fread(&(fat_table -> fat)[i], sizeof(unsigned int), 1, p_file);  
+    printf("%d: %d\n", i, fat_table -> fat[i]);
   }
+
 
   fat_item = (unsigned int *) malloc (sizeof (unsigned int));
   
@@ -186,15 +185,99 @@ void read_fat(char *file_name, struct boot_record *boot_record, struct root_dir 
   }
 
   /* kontrola spravneho poctu nactenych klastru */
-  if (cluster -> size == (boot_record -> reserved_cluster_count - boot_record -> root_directory_max_entries_count)) printf("FAT check cluster: OK\n");
-  else printf("FAT check cluster: FAIL\n");
+  if (cluster -> size == (boot_record -> reserved_cluster_count - boot_record -> root_directory_max_entries_count))
+  {
+    printf("FAT check cluster: OK\n");
+  }else
+  {
+    printf("FAT check cluster: FAIL\n"); 
+    exit(2);
+  }
 
   /* nastaveni aktualniho ukazatele na zacatek */
   root_dir -> actual = root_dir -> first;
-  cluster -> actual = cluster -> first;
   
   /* uzavreni souboru */
   fclose(p_file);
+  
+  printf("FAT read file: OK\n");
 }
 
+/***********************************************************
+ * Najde klastr pro dany blok z FAT tabulky 
+ *  block - blok ve FAT, pro ktery chceme klastr
+************************************************************/
+struct cluster_dyn *find_cluster(struct cluster *cluster, unsigned int block)
+{
+  struct cluster_dyn *cluster_file;
 
+  cluster_file = cluster -> first;
+  while(cluster_file)
+  {
+    if (cluster_file -> position == block)
+      return cluster_file;
+
+    cluster_file = cluster_file -> next;
+  }
+}
+
+/***********************************************************
+ * Zapise dat ze struktur do fat souboru
+ *    file_name - jmeno fat souboru
+ *    boot_record - pocatecni data o fat souboru
+ *    root_dir - popis souboru/slozky
+ *    fat_table - fat tabulka
+ *    cluster - clustry fatky
+************************************************************/
+void write_fat(char *file_name, struct boot_record *boot_record, struct root_dir *root_dir, struct fat_table *fat_table, struct cluster *cluster)
+{
+  int i, j;
+  unsigned int block;
+  struct root_dir_dyn *root_dir_temp;
+  struct cluster_dyn *cluster_temp;
+  FILE *fp;
+  
+  if (!file_name || !boot_record || !root_dir || !fat_table || !cluster) return;
+
+  char cluster_empty[boot_record -> cluster_size];
+  strcpy(cluster_empty, "");
+
+  printf("------------------------------\n");
+  unlink(file_name);
+  fp = fopen(file_name, "w");
+
+  /* zapis boot_record */
+  printf("Zapisuje boot_record\n");
+  fwrite(boot_record, sizeof(boot_record), 1, fp);
+
+  /* zapis FAT tabulku */
+  for (i = 0; i < boot_record -> fat_copies; i++)
+  {
+      fwrite(fat_table -> fat, sizeof(unsigned int) * fat_table -> size, 1, fp);
+      printf("Zapisuje fat_table %d\n", fat_table -> size * sizeof(unsigned int));
+  }
+/*
+  root_dir_temp = root_dir -> first;
+  while(root_dir_temp)
+  {
+    printf("Zapisuju soubor %s - %d\n", root_dir_temp -> dir -> file_name, sizeof(struct root_directory));
+    fwrite(root_dir_temp -> dir, sizeof(struct root_directory), 1, fp);
+    root_dir_temp = root_dir_temp -> next;
+  }
+ 
+  for (i = 0; i < fat_table -> size; i++)
+  {
+    block = fat_table -> fat[i];
+    if (block == FAT_UNUSED)
+    {
+      fwrite(&cluster_empty, sizeof(cluster_empty), 1, fp);
+    }else
+    {
+      cluster_temp = find_cluster(cluster, i);
+      fwrite(cluster_temp -> cluster, boot_record -> cluster_size, 1, fp);
+      printf("Zapisuje cluster %d : %d\n", cluster_temp -> position, boot_record -> cluster_size);
+    }
+  }
+*/
+  fclose(fp);
+}
