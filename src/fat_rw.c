@@ -103,7 +103,7 @@ void read_fat(char *file_name, struct boot_record *boot_record, struct root_dir 
   if (!file_name || !boot_record || !root_dir || !fat_table || !cluster) return;
   
   /* otevre soubor pro cteni */
-  p_file = fopen(file_name, "r");
+  p_file = fopen(file_name, "rb");
 
   /* kontrola spravne otevreneho souboru */
   if (!p_file)
@@ -125,11 +125,11 @@ void read_fat(char *file_name, struct boot_record *boot_record, struct root_dir 
 
   } else if (!strcmp(boot_record -> signature, NOK))
   {
-    printf("FAT tabulky nejsou konzistencni.\n");
+    printf("FAT tables are not consistent.\n");
     exit(2);
   }else if (!strcmp(boot_record -> signature, FAI))
   {
-    printf("FAT tabulky obsahuji chyby.\n");
+    printf("FAT tables contain errors.\n");
     exit(2);
   }
   
@@ -137,12 +137,7 @@ void read_fat(char *file_name, struct boot_record *boot_record, struct root_dir 
   fat_table -> size = boot_record -> cluster_count;
  
   /* cteni fat tabulky */
-  for (i = 0; i < boot_record -> cluster_count; i++)
-  {
-    fread(&(fat_table -> fat)[i], sizeof(unsigned int), 1, p_file);  
-    printf("%d: %d\n", i, fat_table -> fat[i]);
-  }
-
+  fread(fat_table -> fat, sizeof(unsigned int), boot_record -> cluster_count, p_file);  
 
   fat_item = (unsigned int *) malloc (sizeof (unsigned int));
   
@@ -154,7 +149,7 @@ void read_fat(char *file_name, struct boot_record *boot_record, struct root_dir 
       
       if (*fat_item != fat_table -> fat[i])
       {
-        printf("Tabulky FAT se neshoduji.\n");
+        printf("FAT tables are not same.\n");
         exit(2);
       }
     }
@@ -242,29 +237,29 @@ void write_fat(char *file_name, struct boot_record *boot_record, struct root_dir
   char cluster_empty[boot_record -> cluster_size];
   strcpy(cluster_empty, "");
 
-  printf("------------------------------\n");
+  printf("Repaired FAT file: %s\n", file_name); 
+
   unlink(file_name);
-  fp = fopen(file_name, "w");
+  fp = fopen(file_name, "wb");
 
   /* zapis boot_record */
-  printf("Zapisuje boot_record\n");
-  fwrite(boot_record, sizeof(boot_record), 1, fp);
+  fwrite(boot_record, sizeof(struct boot_record), 1, fp);
 
   /* zapis FAT tabulku */
   for (i = 0; i < boot_record -> fat_copies; i++)
   {
-      fwrite(fat_table -> fat, sizeof(unsigned int) * fat_table -> size, 1, fp);
-      printf("Zapisuje fat_table %d\n", fat_table -> size * sizeof(unsigned int));
+      fwrite(fat_table -> fat, sizeof(unsigned int), fat_table -> size, fp);
   }
-/*
+
+  /* zapis root_directory  */
   root_dir_temp = root_dir -> first;
   while(root_dir_temp)
   {
-    printf("Zapisuju soubor %s - %d\n", root_dir_temp -> dir -> file_name, sizeof(struct root_directory));
     fwrite(root_dir_temp -> dir, sizeof(struct root_directory), 1, fp);
     root_dir_temp = root_dir_temp -> next;
   }
  
+  /* zapis klastru  */
   for (i = 0; i < fat_table -> size; i++)
   {
     block = fat_table -> fat[i];
@@ -275,9 +270,9 @@ void write_fat(char *file_name, struct boot_record *boot_record, struct root_dir
     {
       cluster_temp = find_cluster(cluster, i);
       fwrite(cluster_temp -> cluster, boot_record -> cluster_size, 1, fp);
-      printf("Zapisuje cluster %d : %d\n", cluster_temp -> position, boot_record -> cluster_size);
     }
   }
-*/
+  
+  /* uzavreni souboru  */
   fclose(fp);
 }

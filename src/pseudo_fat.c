@@ -57,7 +57,7 @@ int valid_param(int argc, char **argv)
 {
   if (argc < 2)
   {
-    printf("Neplatny pocet parametru.\n");
+    printf("Invalid count parameter.\n");
     exit(1);
   }
 
@@ -66,7 +66,7 @@ int valid_param(int argc, char **argv)
     long res = strtol(argv[2], NULL, 10);
     if (!res)
     {
-      printf("Neplatny parametr '%s'\n", argv[2]);
+      printf("Invalid parameter '%s'\n", argv[2]);
       exit(1);
     }
 
@@ -258,7 +258,7 @@ void create_cluster(char *data, int position)
     }
     actual = actual -> next;
   }
-
+  boot_record -> reserved_cluster_count++;
 }
 
 /***********************************************************
@@ -288,7 +288,6 @@ unsigned int repair_bad_cluster(struct cluster_dyn *actual_cluster, unsigned int
  
   /* odstranit klastry a pripojit nove */
   create_cluster(data_copy, ind_next_free_block);
-//  remove_cluster(actual_cluster);
 
   /* ve FAT tabulce spravne oznacit zmeny */
   fat_table -> fat[previous_block] = ind_next_free_block;
@@ -432,29 +431,30 @@ int main(int argc, char **argv)
 
   /* nacteni struktur ze souboru fat */
   read_fat(file_name, boot_record, root_dir, fat_table, cluster);
- 
+
+  printf("--- FILES WITH BAD CLUSTER ---\n");
   /* vytvoreni vlaken */
   pthread = (pthread_t *) malloc (thread_count * sizeof (pthread_t));
   for (i = 0; i < thread_count; i++)
   {
     pthread_create( &pthread[i], NULL, (void *) check_cluster_length, NULL);
   }
-
+  
   /* sber dat z vlaken */
   for (i = 0; i < thread_count; i++)
   {
     pthread_join(pthread[i], (void **) &pthread_data);
-    printf("Thread %d - %d files\n",i, pthread_data -> count_files);
     result_data -> count_files += pthread_data -> count_files;
     result_data -> flag += pthread_data -> flag;
     free(pthread_data);
   }
 
+  printf("------------------------------\n");
+  
   /* kontrola vysledku dat z vlaken */
   if (!result_data -> flag) printf("Length of files: OK\n");
   else printf("Length of files: FAIL\n");
 
-  print_clusters();
   /* zapis struktur do souboru fat */
   write_fat("output-repair.fat", boot_record, root_dir, fat_table, cluster);
   
