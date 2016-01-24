@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
+#include <time.h>
 
 #include "pseudo_fat.h"
 #include "fat_rw.h"
@@ -44,6 +45,7 @@ void print_fat()
   }
 }
 
+
 /***********************************************************
  * Validace vstupnich parametru
  * Kontroluje se spravny pocet:
@@ -58,6 +60,7 @@ int valid_param(int argc, char **argv)
   if (argc < 2)
   {
     printf("Invalid count parameter.\n");
+    printf("Example: pseudo_fat fat_file_name thread_count*(default=1)\n");
     exit(1);
   }
 
@@ -416,6 +419,7 @@ void *check_cluster_length()
 ************************************************************/
 int main(int argc, char **argv)
 {
+  clock_t t1, t2;
   pthread_t *pthread;
   pthread_data *pthread_data, *result_data;
   int i;
@@ -433,6 +437,7 @@ int main(int argc, char **argv)
   read_fat(file_name, boot_record, root_dir, fat_table, cluster);
 
   printf("--- FILES WITH BAD CLUSTER ---\n");
+  t1 = clock();
   /* vytvoreni vlaken */
   pthread = (pthread_t *) malloc (thread_count * sizeof (pthread_t));
   for (i = 0; i < thread_count; i++)
@@ -448,12 +453,14 @@ int main(int argc, char **argv)
     result_data -> flag += pthread_data -> flag;
     free(pthread_data);
   }
-
+  t2 = clock();
   printf("------------------------------\n");
   
   /* kontrola vysledku dat z vlaken */
   if (!result_data -> flag) printf("Length of files: OK\n");
   else printf("Length of files: FAIL\n");
+
+  printf("Proces was running %f ms.\n", ((double) (t2 - t1)) / CLOCKS_PER_SEC * 1000);
 
   /* zapis struktur do souboru fat */
   write_fat("output-repair.fat", boot_record, root_dir, fat_table, cluster);
